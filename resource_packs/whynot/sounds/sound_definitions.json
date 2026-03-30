@@ -1,0 +1,9 @@
+{
+    "format_version": "1.14.0",
+    "sound_definitions": {
+        "camino_recorra_tu_pasado": {
+            "category": "music",
+            "sounds": ["sounds/camino_recorra_tu_pasado"]
+        }
+    }
+}

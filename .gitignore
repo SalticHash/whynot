@@ -1,0 +1,10 @@
+.env
+.prettierrc.json
+eslint.config.mjs
+just.config.ts
+node_modules/
+jspm_packages/
+lib/
+dist/
+.vscode
+tsconfig.json
