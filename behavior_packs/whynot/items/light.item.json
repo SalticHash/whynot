@@ -1,0 +1,18 @@
+{
+	"format_version": "1.20.50",
+	"minecraft:item": {
+		"description": {
+			"identifier": "whynot:light",
+			"menu_category": {
+				"category": "equipment",
+				"group": "itemGroup.name.sword"
+			}
+		},
+		"components": {
+			"minecraft:max_stack_size": 1,
+			"minecraft:icon": "light",
+			"minecraft:damage": 10,
+			"minecraft:can_destroy_in_creative": false
+		}
+	}
+}

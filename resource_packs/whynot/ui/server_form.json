@@ -42,7 +42,7 @@
                     "controls": [{
                         "crtp_long_form_bg": {
                             "type": "image",
-                            "texture": "textures/camino_recorra_tu_pasado",
+                            "texture": "textures/camino_recorra_tu_pasado/camino_recorra_tu_pasado",
                             "size": [531, 405],
                             "uv_size": [118, 90],
                             "uv": "@overlay_anim",
