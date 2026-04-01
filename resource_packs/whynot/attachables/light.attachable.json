@@ -3,21 +3,15 @@
     "minecraft:attachable": {
         "description": {
             "identifier": "whynot:light",
-            "render_controllers": [
-                "controller.render.default",
-                "controller.render.entity.outline" // For outline.
-            ],
+            "render_controllers": ["controller.render.default"],
             "materials": {
-                "default": "outline_base", // Must have due to custom material keeping the base on front.
-                "outline": "outline" // For outline.
+                "default": "breeze_wind_charge"
             },
             "textures": {
-                "default": "textures/entity/attachable/light", // Base texture
-                "outline": "textures/white" // Outline texture
+                "default": "textures/entity/attachable/light"
             },
             "geometry": {
-                "default": "geometry.light",
-                "outline": "geometry.light_outline"
+                "default": "geometry.light"
             },
             "animations": {
                 "first_person_hold": "animation.light.first_person_hold",
@@ -25,12 +19,8 @@
             },
             "scripts": {
                 "animate": [
-                    {
-                        "first_person_hold": "c.is_first_person"
-                    },
-                    {
-                        "third_person_hold": "!c.is_first_person"
-                    }
+                    {"first_person_hold": "c.is_first_person"},
+                    {"third_person_hold": "!c.is_first_person"}
                 ]
             }
         }
