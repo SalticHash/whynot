@@ -42,10 +42,10 @@ function open_jumpscare(player: Player | undefined) {
     form.title("camino_recorra_tu_pasado");
     let runId = system.runTimeout(() => uiManager.closeAllForms(player), 3140);
 
-    player.playMusic("camino_recorra_tu_pasado");
+    player.playSound("camino_recorra_tu_pasado");
     form.show(player).finally(() => {
         system.run(() => {
-            player.stopMusic();
+            player.stopSound("camino_recorra_tu_pasado");
         });
         system.clearRun(runId);
     });

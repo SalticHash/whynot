@@ -8,7 +8,10 @@
 			"minecraft:max_stack_size": 1,
 			"minecraft:icon": "light",
 			"minecraft:damage": 10,
-			"minecraft:can_destroy_in_creative": false
+			"minecraft:can_destroy_in_creative": false,
+            "minecraft:tags": {
+                "tags": ["whynot:light"]
+            }
 		}
 	}
 }

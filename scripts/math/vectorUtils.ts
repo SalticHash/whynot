@@ -347,6 +347,11 @@ export class V3 {
         }
     }
 
+    static reflect(v: Vector3, n: Vector3) {
+        const dot = V3.dot(v, n);
+        return V3.subtract(v, V3.scale(n, 2 * dot));
+    }
+
 
 
 }
