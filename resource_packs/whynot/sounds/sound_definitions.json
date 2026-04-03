@@ -4,6 +4,25 @@
         "camino_recorra_tu_pasado": {
             "category": "music",
             "sounds": ["sounds/camino_recorra_tu_pasado"]
+        },
+        "light_dash": {
+            "category": "player",
+            "sounds": ["sounds/light/light_dash"]
+        },
+        "light_beam_start": {
+            "category": "player",
+            "sounds": ["sounds/light/light_beam_start"],
+            "volume": 0.01
+        },
+        "light_beam_loop": {
+            "category": "player",
+            "volume": 0.01,
+            "sounds": ["sounds/light/light_beam_loop"]
+        },
+        "moon_jump": {
+            "category": "player",
+            "volume": 0.01,
+            "sounds": ["sounds/light/moon_jump"]
         }
     }
 }
