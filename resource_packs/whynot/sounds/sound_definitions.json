@@ -11,18 +11,19 @@
         },
         "light_beam_start": {
             "category": "player",
-            "sounds": ["sounds/light/light_beam_start"],
-            "volume": 0.01
+            "sounds": ["sounds/light/light_beam_start"]
         },
         "light_beam_loop": {
             "category": "player",
-            "volume": 0.01,
             "sounds": ["sounds/light/light_beam_loop"]
         },
         "moon_jump": {
             "category": "player",
-            "volume": 0.01,
             "sounds": ["sounds/light/moon_jump"]
+        },
+        "dash": {
+            "category": "player",
+            "sounds": ["sounds/light/dash"]
         }
     }
 }
