@@ -3,7 +3,8 @@
 
 import { RGB } from "@minecraft/server";
 
-export const TAU = Math.PI * 2.0
+export const PI = Math.PI
+export const TAU = PI * 2.0
 
 export function clamp(val: number, min: number, max: number): number {
     return Math.min(Math.max(val, min), max);

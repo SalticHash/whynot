@@ -3,19 +3,24 @@ import { V3 } from "./math/vectorUtils";
 import { VECTOR3_DOWN, VECTOR3_EAST, VECTOR3_NORTH, VECTOR3_SOUTH, VECTOR3_UP, VECTOR3_WEST } from "@minecraft/math";
 
 
-export function spawnLine(dimension: Dimension, location: Vector3, direction: Vector3, length: number, thickness: number, color: RGBA): void {
+export function spawnLine(particle_id:string, dimension: Dimension, location: Vector3, direction: Vector3, length: number, thickness: number, color: RGBA | undefined = undefined): void {
   	if (!dimension.isChunkLoaded(location)) return
 	const variableMap = new MolangVariableMap();
 	variableMap.setVector3("direction", direction);
-    variableMap.setColorRGBA("color", color);
+    if (color) variableMap.setColorRGBA("color", color);
 	variableMap.setFloat("thickness", thickness);
-	variableMap.setFloat("length", length);
-	dimension.spawnParticle("whynot:line", location, variableMap);
+	variableMap.setFloat("length", length / 2.0);
+	dimension.spawnParticle(
+        particle_id,
+        V3.add(location, V3.scale(direction, length / 2.0)),
+        variableMap
+    );
 }
 
-export function drawLine(dimension: Dimension, locA: Vector3, locB: Vector3, thickness: number, color: RGBA) {
-	spawnLine(
-		dimension, locA,
+export function drawLine(particle_id: string, dimension: Dimension, locA: Vector3, locB: Vector3, thickness: number, color: RGBA | undefined = undefined) {
+	if (!dimension.isChunkLoaded(locB)) return
+    spawnLine(
+		particle_id, dimension, locA,
 		V3.direction(locA, locB),
 		V3.distance(locA, locB),
 		thickness,
@@ -49,4 +54,9 @@ export function directionVector(face: Direction): Vector3 {
         case Direction.East: return VECTOR3_EAST;
         case Direction.West: return VECTOR3_WEST;
     }
+}
+
+export function entityCenter(entity: Entity): Vector3 | undefined {
+    if (!entity || !entity.isValid) return
+    return V3.shrink(V3.add(entity.location, entity.getHeadLocation()), 2)
 }

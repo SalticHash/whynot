@@ -2,10 +2,10 @@
     "format_version": "1.21.50",
     "particle_effect": {
         "description": {
-            "identifier": "whynot:line",
+            "identifier": "whynot:light_trail",
             "basic_render_parameters": {
-                "material": "particles_blend",
-                "texture": "textures/entity/attachable/light"
+                "material": "particles_add",
+                "texture": "textures/particle/light_trail"
             }
         },
         "components": {
@@ -32,16 +32,12 @@
                     "custom_direction": ["variable.direction.x", "variable.direction.y", "variable.direction.z"]
                 },
                 "uv": {
-                    "texture_width": 16,
-                    "texture_height": 16,
+                    "texture_width": 1,
+                    "texture_height": 6,
                     "uv": [0, 0],
-                    "uv_size": [16, 16]
+                    "uv_size": [1, 6]
                 }
-            },
-            "minecraft:particle_appearance_tinting": {
-                "color": ["variable.color.r", "variable.color.g", "variable.color.b", "variable.color.a"]
-            },
-            "minecraft:particle_appearance_lighting": {}
+            }
         }
     }
 }
