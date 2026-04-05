@@ -1,4 +1,4 @@
-import { ContainerSlot, Dimension, Direction, Entity, EntityEquippableComponent, EquipmentSlot, MolangVariableMap, RGBA, Vector3 } from "@minecraft/server";
+import { ContainerSlot, Dimension, Direction, Entity, EntityEquippableComponent, EquipmentSlot, MolangVariableMap, RGBA, Vector3, WorldSoundOptions } from "@minecraft/server";
 import { V3 } from "./math/vectorUtils";
 import { VECTOR3_DOWN, VECTOR3_EAST, VECTOR3_NORTH, VECTOR3_SOUTH, VECTOR3_UP, VECTOR3_WEST } from "@minecraft/math";
 
@@ -60,3 +60,9 @@ export function entityCenter(entity: Entity): Vector3 | undefined {
     if (!entity || !entity.isValid) return
     return V3.shrink(V3.add(entity.location, entity.getHeadLocation()), 2)
 }
+
+export function playSoundFrom(entity: Entity, soundId: string, soundOptions?: WorldSoundOptions) {
+    entity.dimension.playSound(soundId, entity.location, soundOptions)
+}
+
+export const EFFECT_INFINITE = 20000000
