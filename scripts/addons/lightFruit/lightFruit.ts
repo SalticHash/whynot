@@ -260,6 +260,29 @@ function mainTick() {
         }
         else player.airTime++
 
+        // Water damage to fruit users
+        const container = player.getComponent(EntityInventoryComponent.componentId)?.container
+        if (container?.contains(light) && player.isValid && player.isInWater) {
+            const headBlock = player.dimension.getBlock(player.getHeadLocation())
+            let damage = 0.0
+            if (headBlock?.typeId == "minecraft:water") {
+                damage = 0.5
+                if (headBlock?.above(1)?.typeId == "minecraft:water") {
+                    damage = 1
+                    if (headBlock?.above(2)?.typeId == "minecraft:water") {
+                        damage = 2
+                    }
+                }
+            }
+            player.applyDamage(damage, {cause: EntityDamageCause.contact})
+
+            player.addEffect(MinecraftEffectTypes.Weakness, 3, {showParticles: false})
+            player.addEffect(MinecraftEffectTypes.Slowness, 3, {showParticles: false})
+            changeState(player, States.NORMAL)
+            player.airJumps = 0
+            player.dashCooldown = dashCooldownTime
+        }
+
         if (player.state == States.FLYING) {
             player.ignoreFall = true
             player.fCooldown = fCooldownTime
