@@ -22,7 +22,7 @@
                 "animate": [
                     {"first_person_hold": "c.is_first_person"},
                     {"third_person_hold": "!c.is_first_person"},
-                    {"hide": "query.is_invisible"}
+                    {"hide": "query.is_invisible || query.is_in_water"}
                 ]
             }
         }
