@@ -7,6 +7,7 @@ import { VECTOR3_ZERO } from "@minecraft/math";
 
 enum States {
     NORMAL,
+    WEAK,
     FLYING,
     MOON_JUMP,
     DASH
@@ -119,6 +120,11 @@ Object.defineProperties(Player.prototype, {
     }
 });
 
+function playerHasLight(player: Player) {
+    const container = player.getComponent(EntityInventoryComponent.componentId)?.container
+    return container?.contains(light)
+}
+
 // Eat fruit component
 export function startup(ev: StartupEvent) {
     ev.itemComponentRegistry.registerCustomComponent("whynot:light_fruit", {
@@ -126,10 +132,7 @@ export function startup(ev: StartupEvent) {
             const player = source as Player
             if (!player || player.typeId != "minecraft:player" || !player.isValid) return
             system.run(() => {
-                const container = player.getComponent(EntityInventoryComponent.componentId)?.container
-                if (!container) return
-
-                if (container.contains(light)) return
+                if (playerHasLight(player)) return
 
                 player.addItem(light);
             })
@@ -189,8 +192,12 @@ function changeState(player: Player, state: States) {
             changeState(player, States.NORMAL)
         break;
 
+        case States.WEAK:
+        break;
+
     }
 
+    if (oldState == player.state) return
     switch (oldState) {
         case States.FLYING:
             player.triggerEvent("whynot:remove_static_player");
@@ -199,91 +206,22 @@ function changeState(player: Player, state: States) {
 
             player.removeEffect(MinecraftEffectTypes.Invisibility)
         break;
+
+        case States.WEAK:
+            player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, true)
+        break;
     }
 }
-export function main() {
-    light = new ItemStack("whynot:light", 1);
-    light.lockMode = ItemLockMode.inventory;
-    light.keepOnDeath = true;
 
-    world.getAllPlayers().forEach(player => changeState(player, States.NORMAL))
-    world.beforeEvents.entityHurt.subscribe(ev => {
-        if (ev.damageSource.cause != EntityDamageCause.fall) return
-
-        const player = ev.hurtEntity as Player
-        if (!player.isValid || player.typeId != "minecraft:player") return
-        if (!player.ignoreFall) return
-
-        ev.cancel = true
-    })
-    world.afterEvents.playerButtonInput.subscribe(({button, newButtonState, player}) => {
-        const pressed = newButtonState == ButtonState.Pressed
-        if (!entityHasSlotTag(player, EquipmentSlot.Mainhand, "whynot:light")) return;
-
-        if (button == InputButton.Sneak && newButtonState == ButtonState.Pressed &&
-            player.state == States.NORMAL && player.dashCooldown <= 0) {
-            changeState(player, States.DASH)
-        }
-        if (button != InputButton.Jump) return
-        if (player.airTime >= airborneAirtime && pressed && player.state == States.NORMAL) {
-            // Activate fly
-            if (player.fCooldown <= 0 && player.isSneaking) {
-                changeState(player, States.FLYING)
+function processState(player: Player) {
+    switch (player.state) {
+        case States.NORMAL:
+            if (playerHasLight(player) && player.isInWater) {
+                changeState(player, States.WEAK)
             }
-            // Moon jump
-            else if (player.airJumps > 0) {
-                changeState(player, States.MOON_JUMP)
-            }
-        }
-        // Deactivate fly
-        if (!pressed && player.state == States.FLYING) {
-            changeState(player, States.NORMAL)
-        }
-    })
-    world.afterEvents.playerHotbarSelectedSlotChange.subscribe(({itemStack, player}) => {
-        if (itemStack?.hasTag("whynot:light")) return
-        changeState(player, States.NORMAL)
-    })
+        break;
 
-    system.runInterval(mainTick)
-}
-
-function mainTick() {
-    world.getAllPlayers().forEach(player => {
-        // Set Airtime
-        if (player.isOnGround) {
-            if (player.state != States.FLYING) {
-                player.airJumps = maxAirJumps
-                player.ignoreFall = false
-            }
-            player.airTime = 0
-        }
-        else player.airTime++
-
-        // Water damage to fruit users
-        const container = player.getComponent(EntityInventoryComponent.componentId)?.container
-        if (container?.contains(light) && player.isValid && player.isInWater) {
-            const headBlock = player.dimension.getBlock(player.getHeadLocation())
-            let damage = 0.0
-            if (headBlock?.typeId == "minecraft:water") {
-                damage = 0.5
-                if (headBlock?.above(1)?.typeId == "minecraft:water") {
-                    damage = 1
-                    if (headBlock?.above(2)?.typeId == "minecraft:water") {
-                        damage = 2
-                    }
-                }
-            }
-            player.applyDamage(damage, {cause: EntityDamageCause.contact})
-
-            player.addEffect(MinecraftEffectTypes.Weakness, 3, {showParticles: false})
-            player.addEffect(MinecraftEffectTypes.Slowness, 3, {showParticles: false})
-            changeState(player, States.NORMAL)
-            player.airJumps = 0
-            player.dashCooldown = dashCooldownTime
-        }
-
-        if (player.state == States.FLYING) {
+        case States.FLYING:
             player.ignoreFall = true
             player.fCooldown = fCooldownTime
 
@@ -354,8 +292,103 @@ function mainTick() {
                 playSoundFrom(player, "light_beam_loop")
                 flySoundCooldown.set(player.id, flySoundDuration) 
             }
-        }
 
+            if (player.isInWater) {
+                changeState(player, States.WEAK)
+            }
+        break;
+
+        case States.WEAK:
+            if (!player.isValid || !player.isInWater) {
+                changeState(player, States.NORMAL)
+                return
+            }
+            const headBlock = player.dimension.getBlock(player.getHeadLocation())
+            let damage = 0.0
+            if (headBlock?.typeId == "minecraft:water") {
+                damage = 0.5
+                player.addEffect(MinecraftEffectTypes.Nausea, 80, {showParticles: false})
+                if (headBlock?.above(1)?.typeId == "minecraft:water") {
+                    damage = 1
+                    if (headBlock?.above(2)?.typeId == "minecraft:water") {
+                        damage = 2
+                        player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, false)
+
+                    }
+                }
+            }
+            player.applyDamage(damage, {cause: EntityDamageCause.contact})
+
+            player.addEffect(MinecraftEffectTypes.Weakness, 80, {showParticles: false})
+            player.addEffect(MinecraftEffectTypes.Slowness, 80, {showParticles: false})
+            player.airJumps = 0
+            player.airTime = 0
+            player.dashCooldown = dashCooldownTime
+        break;
+    }
+}
+
+export function main() {
+    light = new ItemStack("whynot:light", 1);
+    light.lockMode = ItemLockMode.inventory;
+    light.keepOnDeath = true;
+
+    world.getAllPlayers().forEach(player => changeState(player, States.NORMAL))
+    world.beforeEvents.entityHurt.subscribe(ev => {
+        if (ev.damageSource.cause != EntityDamageCause.fall) return
+
+        const player = ev.hurtEntity as Player
+        if (!player.isValid || player.typeId != "minecraft:player") return
+        if (!player.ignoreFall) return
+
+        ev.cancel = true
+    })
+    world.afterEvents.playerButtonInput.subscribe(({button, newButtonState, player}) => {
+        const pressed = newButtonState == ButtonState.Pressed
+        if (!entityHasSlotTag(player, EquipmentSlot.Mainhand, "whynot:light")) return;
+
+        if (button == InputButton.Sneak && newButtonState == ButtonState.Pressed &&
+            player.state == States.NORMAL && player.dashCooldown <= 0) {
+            changeState(player, States.DASH)
+        }
+        if (button != InputButton.Jump) return
+        if (player.airTime >= airborneAirtime && pressed && player.state == States.NORMAL) {
+            // Activate fly
+            if (player.fCooldown <= 0 && player.isSneaking) {
+                changeState(player, States.FLYING)
+            }
+            // Moon jump
+            else if (player.airJumps > 0) {
+                changeState(player, States.MOON_JUMP)
+            }
+        }
+        // Deactivate fly
+        if (!pressed && player.state == States.FLYING) {
+            changeState(player, States.NORMAL)
+        }
+    })
+    world.afterEvents.playerHotbarSelectedSlotChange.subscribe(({itemStack, player}) => {
+        if (itemStack?.hasTag("whynot:light")) return
+        changeState(player, States.NORMAL)
+    })
+
+    system.runInterval(mainTick)
+}
+
+
+function mainTick() {
+    world.getAllPlayers().forEach(player => {
+        // Set Airtime
+        if (player.isOnGround) {
+            if (player.state != States.FLYING) {
+                player.airJumps = maxAirJumps
+                player.ignoreFall = false
+            }
+            player.airTime = 0
+        }
+        else player.airTime++
+
+        
         // Reduce all cooldowns
         if (player.zCooldown > 0) player.zCooldown--;
         if (player.xCooldown > 0) player.xCooldown--;
@@ -364,6 +397,8 @@ function mainTick() {
         if (player.fCooldown > 0) player.fCooldown--;
         if (player.dashCooldown > 0) player.dashCooldown--;
         
+        processState(player)
+
         // If player is holding light display cooldowns
         if (!entityHasSlotTag(player, EquipmentSlot.Mainhand, "whynot:light")) {
             player.camera.clear()
