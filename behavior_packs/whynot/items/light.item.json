@@ -11,6 +11,10 @@
 			"minecraft:can_destroy_in_creative": false,
             "minecraft:tags": {
                 "tags": ["whynot:light"]
+            },
+            "minecraft:use_modifiers": {
+                "use_duration": 20000,
+                "movement_modifier": 1
             }
 		}
 	}

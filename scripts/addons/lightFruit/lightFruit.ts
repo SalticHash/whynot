@@ -1,16 +1,23 @@
-import { ButtonState, EntityDamageCause, EntityHealthComponent, EntityInventoryComponent, EquipmentSlot, InputButton, InputPermissionCategory, ItemLockMode, ItemStack, MolangVariableMap, Player, StartupEvent, system, Vector3, world } from "@minecraft/server";
+import { ButtonState, Dimension, EntityDamageCause, EntityHealthComponent, EntityInventoryComponent, EquipmentSlot, InputButton, InputPermissionCategory, ItemLockMode, ItemStack, MolangVariableMap, Player, StartupEvent, system, Vector3, world } from "@minecraft/server";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
-import { directionVector, drawLine, EFFECT_INFINITE, entityCenter, entityHasSlotTag, playSoundFrom } from "../../utility";
+import { directionVector, drawLine, EFFECT_INFINITE, entityCenter, entityHasSlotTag, playSoundFrom, spawnLine } from "../../utility";
 import { V3 } from "../../math/vectorUtils";
 import { deg2Rad, PI, remap, TAU } from "../../math/general";
-import { VECTOR3_ZERO } from "@minecraft/math";
+import { VECTOR3_UP, VECTOR3_ZERO } from "@minecraft/math";
 
 enum States {
     NORMAL,
     WEAK,
     FLYING,
     MOON_JUMP,
-    DASH
+    DASH,
+    CHARGE_V,
+    USE_V,
+    CHARGE_Z,
+    USE_Z,
+    USE_X,
+    HOLD_C,
+    USE_C
 }
 
 let light: ItemStack
@@ -43,6 +50,15 @@ const spinTrailTurnsPerSecond = 1.5
 const spinTrailRadius = 0.5
 const flySoundDuration = 7 //8.58
 
+const ZChargeIncrease = 20
+const ZChargeAmountMax = 3
+
+const lightRayMaxLength = 25
+const lightRayDuration = 20*4
+const lightRayCooldown = 80
+
+const zCooldownTime = 80
+
 class LightFlightVisual {
     lastSpin1: Vector3 | undefined
     lastSpin2: Vector3 | undefined
@@ -54,6 +70,9 @@ const flySoundCooldown: Map<string, number> = new Map()
 const airTime: Map<string, number> = new Map()
 const ignoreFall: Map<string, boolean> = new Map()
 const dashCooldown: Map<string, number> = new Map()
+const holdZTime: Map<string, number> = new Map()
+const holdXTime: Map<string, number> = new Map()
+const ZChargeAmount: Map<string, number> = new Map()
 const flyingAngles: Map<string, Vector3> = new Map()
 const lightFlightVisuals: Map<string, LightFlightVisual> = new Map()
 
@@ -117,7 +136,19 @@ Object.defineProperties(Player.prototype, {
     dashCooldown: {
         get() {return dashCooldown.get(this.id) ?? 0},
         set(v: number) {dashCooldown.set(this.id, v)}
-    }
+    },
+    holdZTime: {
+        get() {return holdZTime.get(this.id) ?? 0},
+        set(v: number) {holdZTime.set(this.id, v)}
+    },
+    ZChargeAmount: {
+        get() {return ZChargeAmount.get(this.id) ?? 0},
+        set(v: number) {ZChargeAmount.set(this.id, v)}
+    },
+    holdXTime: {
+        get() {return holdXTime.get(this.id) ?? 0},
+        set(v: number) {holdXTime.set(this.id, v)}
+    },
 });
 
 function playerHasLight(player: Player) {
@@ -195,9 +226,62 @@ function changeState(player: Player, state: States) {
         case States.WEAK:
         break;
 
+        case States.USE_Z:
+            let angles: number[] = []
+            if (player.ZChargeAmount == 1) angles = [0]
+            if (player.ZChargeAmount == 2) angles = [-15, 15]
+            if (player.ZChargeAmount == 3) angles = [-20, 0, 20]
+            const matrix = V3.getBasisMatrix(player.getViewDirection())
+            for (const angle of angles) {
+                let rad = deg2Rad(angle)
+                let angleRot = V3.directionToRotation(player.getViewDirection())
+                
+                angleRot.y += rad
+                let newDir = V3.rotationToDirection(angleRot)
+                
+                const blockHit = player.dimension.getBlockFromRay(player.getHeadLocation(), newDir, {includePassableBlocks: false})
+                if (!blockHit) continue
+                let p = V3.add(blockHit.block.location, blockHit.faceLocation)
+                drawLine("whynot:light_trail", player.dimension, player.getHeadLocation(), p, 0.25)
+                player.dimension.createExplosion(p, 1, {breaksBlocks: false})
+            }
+            changeState(player, States.NORMAL)
+        break;
+
+        case States.USE_C:
+            player.teleport(V3.add(player.location, VECTOR3_UP))
+            changeState(player, States.NORMAL)
+        break
+
+        case States.USE_V:
+            world.sendMessage("Used V")
+            changeState(player, States.NORMAL)
+        break
+
+        case States.CHARGE_Z:
+            player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, false)
+            player.triggerEvent("whynot:add_static_player");
+            player.ZChargeAmount = 0
+            player.holdZTime = ZChargeIncrease
+        break;
+
+        case States.CHARGE_V:
+        case States.HOLD_C:
+            player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, false)
+            player.triggerEvent("whynot:add_static_player");
+        break;
+
+        case States.USE_X:
+            player.holdXTime = 0
+            playSoundFrom(player, "light_beam_start")
+            player.flySoundCooldown = 0
+            player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, false)
+            player.triggerEvent("whynot:add_static_player");
+        break;
     }
 
     if (oldState == player.state) return
+    // Exiting state
     switch (oldState) {
         case States.FLYING:
             player.triggerEvent("whynot:remove_static_player");
@@ -210,6 +294,23 @@ function changeState(player: Player, state: States) {
         case States.WEAK:
             player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, true)
         break;
+
+        case States.CHARGE_V:
+        case States.HOLD_C:
+            player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, true)
+            player.triggerEvent("whynot:remove_static_player");
+        break;
+        
+        case States.USE_X:
+            player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, true)
+            player.triggerEvent("whynot:remove_static_player");
+        break;
+
+        case States.CHARGE_Z:
+            player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, true)
+            player.triggerEvent("whynot:remove_static_player");
+        break;
+
     }
 }
 
@@ -325,7 +426,65 @@ function processState(player: Player) {
             player.airTime = 0
             player.dashCooldown = dashCooldownTime
         break;
+
+        case States.CHARGE_Z:
+            player.zCooldown = zCooldownTime
+            player.clearVelocity()
+            player.holdZTime++
+            if (player.holdZTime > ZChargeIncrease && player.ZChargeAmount < ZChargeAmountMax) {
+                playSoundFrom(player, "random.burp")
+                player.spawnParticle("minecraft:bleach", player.getHeadLocation())
+                player.ZChargeAmount++;
+                player.holdZTime = 0
+            }
+        break;
+
+        case States.USE_X:
+            player.clearVelocity()
+            player.xCooldown = lightRayCooldown
+            if (player.flySoundCooldown <= 0) {
+                playSoundFrom(player, "light_beam_loop")
+                player.flySoundCooldown = 7
+            }
+            player.flySoundCooldown--
+            const laserHit = player.getBlockFromViewDirection({maxDistance: lightRayMaxLength, includePassableBlocks: false})
+            const laserHitEntity = player.getEntitiesFromViewDirection({maxDistance: lightRayMaxLength})[0]?.entity
+
+            const pviewDir = player.getViewDirection()
+            const headLoc = player.getHeadLocation()
+            const targetLocation: Vector3 = laserHitEntity ?
+                entityCenter(laserHitEntity) ?? laserHitEntity.location :
+                laserHit ?
+                    V3.add(laserHit.block.location, laserHit.faceLocation) :
+                    V3.add(player.location, V3.scale(pviewDir, lightRayMaxLength))
+            const targetDir = V3.direction(headLoc, targetLocation)
+            if (laserHitEntity) {
+                laserHitEntity.applyDamage(10)
+            }
+            let offset_end = V3.add(targetLocation, V3.scale(targetDir, 1))
+            let offset_start = V3.add(headLoc, V3.scale(targetDir, -1))
+            drawLine("whynot:light_trail", player.dimension, offset_start, offset_end, 0.25)
+            const map = new MolangVariableMap()
+            map.setFloat("size", 1)
+            map.setFloat("frame", system.currentTick % flightStarFrames)
+            player.spawnParticle("whynot:light_star", offset_end, map)
+            player.spawnParticle("whynot:light_star", offset_start, map)
+            player.holdXTime++
+            if (player.holdXTime > lightRayDuration) {
+                changeState(player, States.NORMAL)
+            }
+        break;
+
+        case States.CHARGE_V:
+            player.clearVelocity()
+        break;
+
+        case States.HOLD_C:
+            player.clearVelocity()
+        break
+        
     }
+
 }
 
 export function main() {
@@ -342,6 +501,29 @@ export function main() {
         if (!player.ignoreFall) return
 
         ev.cancel = true
+    })
+    // world.afterEvents.playerSwingStart.subscribe(({heldItemStack, player}) => {
+    //     if (!heldItemStack?.hasTag("whynot:light")) return
+    //     if (player.state ==)
+    // })
+    world.afterEvents.itemStartUse.subscribe(({itemStack, source}) => {
+        if (!itemStack?.hasTag("whynot:light")) return
+        if (!source.isValid || source.typeId != "minecraft:player") return
+        if (source.state != States.NORMAL) return
+        if (source.isSneaking) {
+            if (source.zCooldown <= 0) changeState(source, States.CHARGE_Z)
+        } else {
+            if (source.xCooldown <= 0) changeState(source, States.USE_X)
+        }  
+    })
+    world.afterEvents.itemStopUse.subscribe(({itemStack, source}) => {
+        if (!itemStack?.hasTag("whynot:light")) return
+        if (!source.isValid || source.typeId != "minecraft:player") return
+
+        switch (source.state) {
+            case States.CHARGE_Z: changeState(source, States.USE_Z); break;
+            case States.USE_X: changeState(source, States.NORMAL); break;
+        }
     })
     world.afterEvents.playerButtonInput.subscribe(({button, newButtonState, player}) => {
         const pressed = newButtonState == ButtonState.Pressed

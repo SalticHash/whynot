@@ -276,10 +276,10 @@ export class V3 {
     }
 
     static directionToRotation(direction: Vector3) {
-        const yaw = -Math.atan2(direction.x, direction.z); // Calculate yaw from x and z
-        const pitch = -Math.asin(direction.y); // Calculate pitch from y
+        const yaw = Math.atan2(direction.x, direction.z); // Calculate yaw from x and z
+        const pitch = Math.asin(direction.y); // Calculate pitch from y
 
-        return V2.make(rad2Deg(pitch), rad2Deg(yaw));
+        return V2.make(pitch, yaw)
     }
 
     // USES RADIANS

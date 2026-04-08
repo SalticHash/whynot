@@ -23,6 +23,9 @@ declare module "@minecraft/server" {
         ignoreFall: boolean;
         airJumps: number;
         dashCooldown: number;
+        holdZTime: number;
+        ZChargeAmount: number;
+        holdXTime: number;
         flyingAngles: Vector3;
         lightFlightVisuals: LightFlightVisual;
     }
