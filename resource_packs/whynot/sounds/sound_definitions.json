@@ -24,6 +24,31 @@
         "dash": {
             "category": "player",
             "sounds": ["sounds/light/dash"]
+        },
+
+        "light_bow_start_charge": {
+            "category": "player",
+            "sounds": ["sounds/light/light_bow_start_charge"]
+        },
+        "light_bow_charge": {
+            "category": "player",
+            "sounds": ["sounds/light/light_bow_charge"]
+        },
+        "light_bow_alarm": {
+            "category": "player",
+            "sounds": ["sounds/light/light_bow_alarm"]
+        },
+        "light_bow_shoot": {
+            "category": "player",
+            "sounds": ["sounds/light/light_bow_shoot"]
+        },
+        "light_ring_start": {
+            "category": "player",
+            "sounds": ["sounds/light/light_ring_start"]
+        },
+        "light_ring_explode": {
+            "category": "player",
+            "sounds": ["sounds/light/light_ring_explode"]
         }
     }
 }

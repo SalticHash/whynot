@@ -50,7 +50,7 @@ const spinTrailTurnsPerSecond = 1.5
 const spinTrailRadius = 0.5
 const flySoundDuration = 7 //8.58
 
-const ZChargeIncrease = 20
+const ZChargeIncrease = 8
 const ZChargeAmountMax = 3
 
 const lightRayMaxLength = 25
@@ -58,6 +58,7 @@ const lightRayDuration = 20*4
 const lightRayCooldown = 80
 
 const zCooldownTime = 80
+const alarmSoundDuration = 4
 
 class LightFlightVisual {
     lastSpin1: Vector3 | undefined
@@ -67,6 +68,7 @@ class LightFlightVisual {
 }
 const flyTurnCooldown: Map<string, number> = new Map()
 const flySoundCooldown: Map<string, number> = new Map()
+const alarmSoundCooldown: Map<string, number> = new Map()
 const airTime: Map<string, number> = new Map()
 const ignoreFall: Map<string, boolean> = new Map()
 const dashCooldown: Map<string, number> = new Map()
@@ -149,6 +151,10 @@ Object.defineProperties(Player.prototype, {
         get() {return holdXTime.get(this.id) ?? 0},
         set(v: number) {holdXTime.set(this.id, v)}
     },
+    alarmSoundCooldown: {
+        get() {return alarmSoundCooldown.get(this.id) ?? 0},
+        set(v: number) {alarmSoundCooldown.set(this.id, v)}
+    }
 });
 
 function playerHasLight(player: Player) {
@@ -231,21 +237,27 @@ function changeState(player: Player, state: States) {
             if (player.ZChargeAmount == 1) angles = [0]
             if (player.ZChargeAmount == 2) angles = [-15, 15]
             if (player.ZChargeAmount == 3) angles = [-20, 0, 20]
-            const matrix = V3.getBasisMatrix(player.getViewDirection())
+            let t = 0
             for (const angle of angles) {
-                let rad = deg2Rad(angle)
-                let angleRot = V3.directionToRotation(player.getViewDirection())
-                
-                angleRot.y += rad
-                let newDir = V3.rotationToDirection(angleRot)
-                
-                const blockHit = player.dimension.getBlockFromRay(player.getHeadLocation(), newDir, {includePassableBlocks: false})
-                if (!blockHit) continue
-                let p = V3.add(blockHit.block.location, blockHit.faceLocation)
-                drawLine("whynot:light_trail", player.dimension, player.getHeadLocation(), p, 0.25)
-                player.dimension.createExplosion(p, 1, {breaksBlocks: false})
+                system.runTimeout(() => {
+                    let rad = deg2Rad(angle)
+                    let angleRot = V3.directionToRotation(player.getViewDirection())
+                    
+                    angleRot.y += rad
+                    let newDir = V3.rotationToDirection(angleRot)
+                    
+                    const blockHit = player.dimension.getBlockFromRay(player.getHeadLocation(), newDir, {includePassableBlocks: false})
+                    if (!blockHit) return
+                    let p = V3.add(blockHit.block.location, blockHit.faceLocation)
+                    drawLine("whynot:light_trail", player.dimension, player.getHeadLocation(), p, 0.25)
+                    player.dimension.createExplosion(p, 1, {breaksBlocks: false})
+                    playSoundFrom(player, "light_bow_shoot")
+                }, t)
+                t += 2
             }
-            changeState(player, States.NORMAL)
+            system.runTimeout(() => {
+                changeState(player, States.NORMAL)
+            }, t)
         break;
 
         case States.USE_C:
@@ -261,6 +273,7 @@ function changeState(player: Player, state: States) {
         case States.CHARGE_Z:
             player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, false)
             player.triggerEvent("whynot:add_static_player");
+            player.alarmSoundCooldown = alarmSoundDuration
             player.ZChargeAmount = 0
             player.holdZTime = ZChargeIncrease
         break;
@@ -432,10 +445,18 @@ function processState(player: Player) {
             player.clearVelocity()
             player.holdZTime++
             if (player.holdZTime > ZChargeIncrease && player.ZChargeAmount < ZChargeAmountMax) {
-                playSoundFrom(player, "random.burp")
                 player.spawnParticle("minecraft:bleach", player.getHeadLocation())
                 player.ZChargeAmount++;
                 player.holdZTime = 0
+                if (player.ZChargeAmount == 1) playSoundFrom(player, "light_bow_start_charge");
+                else playSoundFrom(player, "light_bow_charge")
+            }
+            if (player.ZChargeAmount == 3) {
+                if (player.alarmSoundCooldown > alarmSoundDuration) {
+                    playSoundFrom(player, "light_bow_alarm")
+                    player.alarmSoundCooldown = 0
+                }
+                player.alarmSoundCooldown++
             }
         break;
 

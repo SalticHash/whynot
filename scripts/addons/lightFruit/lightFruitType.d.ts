@@ -26,6 +26,7 @@ declare module "@minecraft/server" {
         holdZTime: number;
         ZChargeAmount: number;
         holdXTime: number;
+        alarmSoundCooldown: number;
         flyingAngles: Vector3;
         lightFlightVisuals: LightFlightVisual;
     }
