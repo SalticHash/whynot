@@ -3,7 +3,7 @@
     "minecraft:camera_preset": {
         "identifier": "whynot:follow_orbit",
         "inherit_from": "minecraft:follow_orbit",
-        "view_offset": [2.0, 2.0],
+        "view_offset": [0.0, 0.0],
         "listener": "player",
         "radius": 12
     }
