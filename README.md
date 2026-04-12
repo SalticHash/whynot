@@ -25,3 +25,10 @@ If you use the spear (right click) you will shoot a light beam that damages enem
 #### C, V Abilities are pending to be implemented.
 #### Water damage
 This is a permanent debuf, if you are or not holding the light spear you will get weaker the deeper you go in water, if you go deep enough you will go unconcious and loose movement controls.
+
+## How to use:
+Follow the steps as in this [video](https://youtu.be/UW123lx4H8o), if you have any problem check:
+- You have command permisions
+- You have enabled beta API and camera API features in the world.
+- Use `/reload` if you ahd any problems, try exiting and reentering the world and using `/reload` again
+- Make sure you're playing on atleast Minecraft Bedrock Preview v26.20.26
